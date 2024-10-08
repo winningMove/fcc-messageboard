@@ -3,16 +3,19 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const crypto = require("crypto");
 
-const BoardSchema = new Schema({
-  name: String,
-  threads: [
-    { type: mongoose.SchemaTypes.ObjectId, ref: "Thread", default: [] },
-  ],
-});
+const BoardSchema = new Schema(
+  {
+    name: { type: String, unique: true, required: true },
+    threads: [
+      { type: mongoose.SchemaTypes.ObjectId, ref: "Thread", default: [] },
+    ],
+  },
+  { _id: false }
+);
 
 // Helper to hash the delete_password
 function hashPassword(next) {
-  if (this.isNew) {
+  if (this.$isNew) {
     this.delete_password = crypto
       .createHash("sha256")
       .update(this.delete_password)
@@ -40,5 +43,8 @@ const ReplySchema = new Schema({
 ThreadSchema.pre("save", hashPassword);
 ReplySchema.pre("save", hashPassword);
 
-exports.Thread = mongoose.model("Thread", ThreadSchema);
-exports.Reply = mongoose.model("Reply", ReplySchema);
+module.exports = {
+  Thread: mongoose.model("Thread", ThreadSchema),
+  Reply: mongoose.model("Reply", ReplySchema),
+  Board: mongoose.model("Board", BoardSchema),
+};
