@@ -22,5 +22,4 @@ const ReplySchema = new Schema({
 module.exports = {
   Thread: mongoose.model("Thread", ThreadSchema),
   Reply: mongoose.model("Reply", ReplySchema),
-  Board: mongoose.model("Board", BoardSchema),
 };
