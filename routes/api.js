@@ -6,7 +6,9 @@ const crypto = require("crypto");
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
+
 exports.hashPassword = hashPassword;
+
 exports.app = function (app) {
   app
     .route("/api/threads/:board")
@@ -57,7 +59,6 @@ exports.app = function (app) {
       }
     })
     .put(async function (req, res) {
-      const { board } = req.params;
       const { thread_id } = req.query;
       try {
         const thread = await Thread.findById(thread_id);
@@ -72,8 +73,6 @@ exports.app = function (app) {
   app
     .route("/api/replies/:board")
     .post(async function (req, res) {
-      const { board } = req.params;
-
       let { text, delete_password, thread_id } = req.query;
       delete_password = hashPassword(delete_password);
 
