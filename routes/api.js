@@ -6,8 +6,8 @@ const crypto = require("crypto");
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
-
-module.exports = function (app) {
+exports.hashPassword = hashPassword;
+exports.app = function (app) {
   app
     .route("/api/threads/:board")
     .post(async function (req, res) {
@@ -18,7 +18,7 @@ module.exports = function (app) {
 
       try {
         await Thread.create({ board, text, delete_password });
-        res.send(`Successfully added new thread to ${board}`);
+        res.send("success");
       } catch (error) {
         res.status(400).send("error");
       }
@@ -43,17 +43,14 @@ module.exports = function (app) {
       }
     })
     .delete(async function (req, res) {
-      const { board } = req.params;
       let { thread_id, delete_password } = req.query;
       delete_password = hashPassword(delete_password);
       try {
-        const thread = await Thread.findOne({
-          board,
-          _id: thread_id,
-        });
-        if (thread.delete_password !== delete_password)
-          res.send("incorrect password");
-        await thread.deleteOne();
+        const thread = await Thread.findById(thread_id);
+        if (thread.delete_password !== delete_password) {
+          return res.send("incorrect password");
+        }
+        await Thread.deleteOne({ _id: thread._id });
         res.send("success");
       } catch (error) {
         res.status(400).send("error");
@@ -63,7 +60,7 @@ module.exports = function (app) {
       const { board } = req.params;
       const { thread_id } = req.query;
       try {
-        const thread = await Thread.findOne({ board, _id: thread_id });
+        const thread = await Thread.findById(thread_id);
         thread.reported = true;
         await thread.save();
         res.send("reported");
@@ -81,12 +78,12 @@ module.exports = function (app) {
       delete_password = hashPassword(delete_password);
 
       try {
-        const thread = await Thread.find({ board, _id: thread_id });
+        const thread = await Thread.findById(thread_id);
         const reply = await Reply.create({ text, delete_password });
         thread.bumped_on = reply.created_on;
         thread.replies.push(reply._id);
         await thread.save();
-        res.send("Successfully added new reply to target thread");
+        res.send("success");
       } catch (error) {
         res.status(400).send("error");
       }
@@ -115,7 +112,7 @@ module.exports = function (app) {
           _id: reply_id,
         });
         if (reply.delete_password !== delete_password)
-          res.send("incorrect password");
+          return res.send("incorrect password");
         reply.text = "[deleted]";
         await reply.save();
         res.send("success");
