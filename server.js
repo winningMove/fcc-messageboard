@@ -20,6 +20,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 //set default security config
 app.use(helmet());
+app.use(helmet.referrerPolicy({ policy: "same-origin" }));
 
 mongoose
   .connect(process.env.DB)

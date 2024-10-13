@@ -14,8 +14,7 @@ exports.app = function (app) {
     .route("/api/threads/:board")
     .post(async function (req, res) {
       const { board } = req.params;
-
-      let { text, delete_password } = req.query;
+      let { text, delete_password } = req.body;
       delete_password = hashPassword(delete_password);
 
       try {
@@ -34,18 +33,21 @@ exports.app = function (app) {
         )
           .sort({ bumped_on: -1 })
           .limit(10)
-          .populate({
-            path: "replies",
-            select: "-delete_password -reported",
-            options: { sort: { created_on: -1 }, limit: 3 },
+          .lean();
+        threads.forEach((thread) => {
+          thread.replies = thread.replies.slice(-3);
+          thread.replies.forEach((reply) => {
+            delete reply.delete_password;
+            delete reply.reported;
           });
+        });
         res.json(threads);
       } catch (error) {
         res.status(400).send("error");
       }
     })
     .delete(async function (req, res) {
-      let { thread_id, delete_password } = req.query;
+      let { thread_id, delete_password } = req.body;
       delete_password = hashPassword(delete_password);
       try {
         const thread = await Thread.findById(thread_id);
@@ -59,7 +61,7 @@ exports.app = function (app) {
       }
     })
     .put(async function (req, res) {
-      const { thread_id } = req.query;
+      const { thread_id } = req.body;
       try {
         const thread = await Thread.findById(thread_id);
         thread.reported = true;
@@ -73,14 +75,14 @@ exports.app = function (app) {
   app
     .route("/api/replies/:board")
     .post(async function (req, res) {
-      let { text, delete_password, thread_id } = req.query;
+      let { text, delete_password, thread_id } = req.body;
       delete_password = hashPassword(delete_password);
 
       try {
         const thread = await Thread.findById(thread_id);
         const reply = await Reply.create({ text, delete_password });
         thread.bumped_on = reply.created_on;
-        thread.replies.push(reply._id);
+        thread.replies.push(reply);
         await thread.save();
         res.send("success");
       } catch (error) {
@@ -92,11 +94,11 @@ exports.app = function (app) {
       const { thread_id } = req.query;
       try {
         const thread = await Thread.findOne(
-          { board, _id: thread_id },
+          { _id: thread_id },
           "-delete_password -reported"
-        ).populate({
-          path: "replies",
-          select: "-delete_password -reported",
+        ).select({
+          "replies.delete_password": 0,
+          "replies.reported": 0,
         });
         res.json(thread);
       } catch (error) {
@@ -104,23 +106,22 @@ exports.app = function (app) {
       }
     })
     .delete(async function (req, res) {
-      let { reply_id, delete_password } = req.query;
+      let { thread_id, reply_id, delete_password } = req.body;
       delete_password = hashPassword(delete_password);
       try {
-        const reply = await Reply.findOne({
-          _id: reply_id,
-        });
+        const thread = await Thread.findById(thread_id);
+        const reply = thread.replies.id(reply_id);
         if (reply.delete_password !== delete_password)
           return res.send("incorrect password");
         reply.text = "[deleted]";
-        await reply.save();
+        await thread.save();
         res.send("success");
       } catch (error) {
         res.status(400).send("error");
       }
     })
     .put(async function (req, res) {
-      const { reply_id } = req.query;
+      const { reply_id } = req.body;
       try {
         const reply = await Reply.findOne({ _id: reply_id });
         reply.reported = true;

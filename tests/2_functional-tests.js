@@ -43,7 +43,7 @@ async function cleanAndPopulateDB() {
       board: "b",
       text: `New thread ${i}`,
       delete_password: hashPassword(`pwd${i}`),
-      replies: replies.map((r) => r._id),
+      replies: replies,
     });
   }
   const threads = await Thread.create(threadsToCreate);
@@ -58,7 +58,8 @@ suite("Functional Tests", function () {
     requester = chai.request(server).keepOpen();
     await cleanAndPopulateDB();
   });
-  suiteTeardown(function closeConnection() {
+  suiteTeardown(async function closeConnection() {
+    await Promise.all([Thread.deleteMany({}), Reply.deleteMany({})]);
     requester.close();
   });
 
@@ -66,7 +67,11 @@ suite("Functional Tests", function () {
     test("creating a new thread succeeds via POST to /api/threads/{board}", (done) => {
       requester
         .post("/api/threads/b")
-        .query({ text: "New thread test", delete_password: "turtles" })
+        .send({
+          board: "b",
+          text: "New thread test",
+          delete_password: "turtles",
+        })
         .end((err, res) => {
           assert.strictEqual(res.text, "success");
           done();
@@ -89,7 +94,7 @@ suite("Functional Tests", function () {
     test("deleting a thread with incorrect password fails via DELETE to /api/threads/{board}", (done) => {
       requester
         .delete("/api/threads/b")
-        .query({ thread_id: String(idForDeletion), delete_password: "pwd4" })
+        .send({ thread_id: String(idForDeletion), delete_password: "pwd4" })
         .end((err, res) => {
           assert.strictEqual(res.text, "incorrect password");
           done();
@@ -98,7 +103,7 @@ suite("Functional Tests", function () {
     test("deleting a thread with correct password succeeds via DELETE to /api/threads/{board}", (done) => {
       requester
         .delete("/api/threads/b")
-        .query({
+        .send({
           thread_id: String(idForDeletion),
           delete_password: pwdForDeletion,
         })
@@ -110,7 +115,7 @@ suite("Functional Tests", function () {
     test("reporting a thread succeeds via PUT to /api/threads/{board}", (done) => {
       requester
         .put("/api/threads/b")
-        .query({ thread_id: String(idForReporting) })
+        .send({ thread_id: String(idForReporting) })
         .end((err, res) => {
           assert.strictEqual(res.text, "reported");
           done();
@@ -122,7 +127,7 @@ suite("Functional Tests", function () {
     test("creating a new reply succeeds via POST to /api/replies/{board}", (done) => {
       requester
         .post("/api/replies/b")
-        .query({
+        .send({
           text: "New reply test",
           delete_password: "turtles",
           thread_id: String(idForReporting),
@@ -149,7 +154,7 @@ suite("Functional Tests", function () {
     test("deleting a reply with incorrect password fails via DELETE to /api/replies/{board}", (done) => {
       requester
         .delete("/api/replies/b")
-        .query({
+        .send({
           thread_id: String(idForReporting),
           reply_id: String(replyIdForDeletion),
           delete_password: "pwd4",
@@ -162,7 +167,7 @@ suite("Functional Tests", function () {
     test("deleting a reply with correct password succeeds via DELETE to /api/replies/{board}", (done) => {
       requester
         .delete("/api/replies/b")
-        .query({
+        .send({
           thread_id: String(idForReporting),
           reply_id: String(replyIdForDeletion),
           delete_password: replyPwdForDeletion,
@@ -175,7 +180,7 @@ suite("Functional Tests", function () {
     test("reporting a reply succeeds via PUT to /api/replies/{board}", (done) => {
       requester
         .put("/api/replies/b")
-        .query({
+        .send({
           thread_id: String(idForReporting),
           reply_id: String(replyIdForReporting),
         })
