@@ -49,7 +49,7 @@ async function cleanAndPopulateDB() {
   const threads = await Thread.create(threadsToCreate);
 
   idForDeletion = threads.find((thread) => thread.text === "New thread 1")._id;
-  idForReporting = threads.find((thread) => thread.text === "New thread 2")._id;
+  idForReporting = threads.find((thread) => thread.text === "New thread 0")._id;
   pwdForDeletion = "pwd1";
 }
 
